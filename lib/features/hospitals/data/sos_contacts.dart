@@ -1,37 +1,50 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class SOSContact {
+  final String id;  // Document ID for Firestore
   final String name;
   final String number;
   final String relationship;
   final IconData icon;
   final Color color;
+  final DateTime createdAt;
 
   SOSContact({
+    String? id,
     required this.name,
     required this.number,
     required this.relationship,
     this.icon = Icons.person,
     this.color = Colors.blue,
-  });
+    DateTime? createdAt,
+  }) : 
+    this.id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    this.createdAt = createdAt ?? DateTime.now();
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toFirestore() => {
+    'id': id,
     'name': name,
     'number': number,
     'relationship': relationship,
     'icon': icon.codePoint,
     'color': color.value,
+    'createdAt': Timestamp.fromDate(createdAt),
   };
 
-  factory SOSContact.fromJson(Map<String, dynamic> json) => SOSContact(
-    name: json['name'] as String,
-    number: json['number'] as String,
-    relationship: json['relationship'] as String,
-    icon: IconData(json['icon'] as int? ?? Icons.person.codePoint, fontFamily: 'MaterialIcons'),
-    color: Color(json['color'] as int? ?? Colors.blue.value),
-  );
+  factory SOSContact.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return SOSContact(
+      id: doc.id,
+      name: data['name'] as String,
+      number: data['number'] as String,
+      relationship: data['relationship'] as String,
+      icon: IconData(data['icon'] as int? ?? Icons.person.codePoint, fontFamily: 'MaterialIcons'),
+      color: Color(data['color'] as int? ?? Colors.blue.value),
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+    );
+  }
 
   // Get appropriate icon based on relationship
   static IconData getIconForRelationship(String relationship) {
@@ -86,20 +99,48 @@ class SOSContact {
 }
 
 class SOSContactsManager {
-  static const String _prefsKey = 'sos_contacts';
   static const int maxContacts = 5; // Limit to 5 emergency contacts
-  
-  static Future<List<SOSContact>> getContacts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getStringList(_prefsKey) ?? [];
-    return contactsJson
-        .map((json) => SOSContact.fromJson(jsonDecode(json)))
-        .toList();
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Get the collection reference for the current user's contacts
+  static CollectionReference<Map<String, dynamic>> _getContactsCollection() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('User not authenticated');
+    return _firestore.collection('users').doc(userId).collection('emergency_contacts');
   }
 
+  // Get contacts as a real-time stream
+  static Stream<List<SOSContact>> getContactsStream() {
+    try {
+      return _getContactsCollection()
+          .orderBy('createdAt')
+          .snapshots()
+          .map((snapshot) => snapshot.docs
+              .map((doc) => SOSContact.fromFirestore(doc))
+              .toList());
+    } catch (e) {
+      debugPrint('Error getting contacts stream: $e');
+      return Stream.value([]);
+    }
+  }
+
+  // Get contacts as Future
+  static Future<List<SOSContact>> getContacts() async {
+    try {
+      final snapshot = await _getContactsCollection().orderBy('createdAt').get();
+      return snapshot.docs
+          .map((doc) => SOSContact.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting contacts: $e');
+      return [];
+    }
+  }
+
+  // Add a new contact
   static Future<bool> addContact(SOSContact newContact) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       final contacts = await getContacts();
       
       // Check if contact already exists
@@ -121,51 +162,50 @@ class SOSContactsManager {
         color: SOSContact.getColorForRelationship(newContact.relationship),
       );
       
-      contacts.add(contact);
-      await _saveContacts(contacts, prefs);
+      await _getContactsCollection().doc(contact.id).set(contact.toFirestore());
       return true;
     } catch (e) {
+      debugPrint('Error adding contact: $e');
       return false;
     }
   }
 
-  static Future<bool> removeContact(int index) async {
+  // Remove a contact
+  static Future<bool> removeContact(String contactId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final contacts = await getContacts();
-      if (index >= 0 && index < contacts.length) {
-        contacts.removeAt(index);
-        await _saveContacts(contacts, prefs);
-        return true;
-      }
-      return false;
+      await _getContactsCollection().doc(contactId).delete();
+      return true;
     } catch (e) {
+      debugPrint('Error removing contact: $e');
       return false;
     }
   }
 
-  static Future<void> _saveContacts(List<SOSContact> contacts, SharedPreferences prefs) async {
-    final contactsJson = contacts
-        .map((contact) => jsonEncode(contact.toJson()))
-        .toList();
-    await prefs.setStringList(_prefsKey, contactsJson);
-  }
-
-  static Future<bool> reorderContacts(int oldIndex, int newIndex) async {
+  // Reorder contacts
+  static Future<bool> reorderContacts(List<SOSContact> contacts) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final contacts = await getContacts();
+      final batch = _firestore.batch();
+      final collection = _getContactsCollection();
       
-      if (oldIndex < newIndex) {
-        newIndex -= 1;
+      // Update each contact with new timestamp to maintain order
+      for (int i = 0; i < contacts.length; i++) {
+        final contact = contacts[i];
+        final updatedContact = SOSContact(
+          id: contact.id,
+          name: contact.name,
+          number: contact.number,
+          relationship: contact.relationship,
+          icon: contact.icon,
+          color: contact.color,
+          createdAt: DateTime.now().add(Duration(milliseconds: i)),
+        );
+        batch.set(collection.doc(contact.id), updatedContact.toFirestore());
       }
       
-      final contact = contacts.removeAt(oldIndex);
-      contacts.insert(newIndex, contact);
-      
-      await _saveContacts(contacts, prefs);
+      await batch.commit();
       return true;
     } catch (e) {
+      debugPrint('Error reordering contacts: $e');
       return false;
     }
   }

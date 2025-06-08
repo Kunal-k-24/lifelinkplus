@@ -205,97 +205,157 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
   String? _error;
   String _loadingStatus = 'Getting location...';
   List<SOSContact> _sosContacts = [];
+  StreamSubscription<List<SOSContact>>? _sosContactsSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadSOSContacts();
+    _subscribeToSOSContacts();
     _initializeLocation();
   }
 
-  Future<void> _loadSOSContacts() async {
-    final contacts = await SOSContactsManager.getContacts();
-    setState(() {
-      _sosContacts = contacts;
-    });
+  @override
+  void dispose() {
+    _sosContactsSubscription?.cancel();
+    super.dispose();
   }
 
-  Future<void> _addSOSContact() async {
-    final nameController = TextEditingController();
-    final numberController = TextEditingController();
-    final relationshipController = TextEditingController();
+  void _subscribeToSOSContacts() {
+    _sosContactsSubscription = SOSContactsManager.getContactsStream().listen(
+      (contacts) {
+        setState(() {
+          _sosContacts = contacts;
+        });
+      },
+      onError: (error) {
+        debugPrint('Error loading SOS contacts: $error');
+        // Show error in UI if needed
+      },
+    );
+  }
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Emergency Contact'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'Enter contact name',
-              ),
+  Future<void> _addSOSContact(String name, String number) async {
+    try {
+      // Show relationship picker
+      final relationships = [
+        'Father',
+        'Mother',
+        'Spouse',
+        'Brother',
+        'Sister',
+        'Friend',
+        'Doctor',
+        'Other'
+      ];
+
+      if (!mounted) return;
+
+      final selectedRelationship = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Select Relationship'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: relationships.map((relationship) => ListTile(
+                leading: Icon(
+                  SOSContact.getIconForRelationship(relationship),
+                  color: SOSContact.getColorForRelationship(relationship),
+                ),
+                title: Text(relationship),
+                onTap: () => Navigator.pop(context, relationship),
+              )).toList(),
             ),
-            TextField(
-              controller: numberController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter phone number',
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            TextField(
+          ),
+        ),
+      );
+
+      if (selectedRelationship == null) return;  // User cancelled relationship selection
+
+      String finalRelationship = selectedRelationship;
+      if (selectedRelationship == 'Other') {
+        if (!mounted) return;
+
+        // Show custom relationship input
+        final relationshipController = TextEditingController();
+        final customResult = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Specify Relationship'),
+            content: TextField(
               controller: relationshipController,
               decoration: const InputDecoration(
                 labelText: 'Relationship',
-                hintText: 'E.g., Family, Friend',
+                hintText: 'E.g., Cousin, Neighbor',
               ),
+              textCapitalization: TextCapitalization.words,
+              autofocus: true,
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (relationshipController.text.isNotEmpty) {
+                    Navigator.pop(context, true);
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty && 
-                  numberController.text.isNotEmpty &&
-                  relationshipController.text.isNotEmpty) {
-                Navigator.pop(context, true);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
-                );
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
+        );
 
-    if (result == true) {
-      final contact = SOSContact(
-        name: nameController.text,
-        number: numberController.text,
-        relationship: relationshipController.text,
+        if (customResult != true || !mounted) return;  // User cancelled or context disposed
+        finalRelationship = relationshipController.text.trim();
+      }
+
+      // Add the contact
+      final success = await SOSContactsManager.addContact(
+        SOSContact(
+          name: name,
+          number: number,
+          relationship: finalRelationship,
+        ),
       );
-      await SOSContactsManager.addContact(contact);
-      await _loadSOSContacts();
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added $name to emergency contacts'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not add contact. Maximum limit reached or contact already exists.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding contact: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
-  Future<void> _removeSOSContact(int index) async {
+  Future<void> _removeSOSContact(SOSContact contact) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Contact'),
-        content: const Text('Are you sure you want to remove this emergency contact?'),
+        content: Text('Are you sure you want to remove ${contact.name} from your emergency contacts?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -311,8 +371,22 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     );
 
     if (confirm == true) {
-      await SOSContactsManager.removeContact(index);
-      await _loadSOSContacts();
+      final success = await SOSContactsManager.removeContact(contact.id);
+      
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Emergency contact removed')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to remove contact. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -730,7 +804,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     final nameController = TextEditingController();
     final numberController = TextEditingController();
 
-    showModalBottomSheet(
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => Padding(
@@ -752,7 +826,10 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _pickContact,
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _pickContact();
+                      },
                       icon: const Icon(Icons.contacts),
                       label: const Text('Pick from Contacts'),
                     ),
@@ -768,6 +845,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                   labelText: 'Name',
                   hintText: 'Enter contact name',
                 ),
+                textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: 8),
               TextField(
@@ -777,6 +855,16 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                   hintText: 'Enter phone number',
                 ),
                 keyboardType: TextInputType.phone,
+                onChanged: (value) {
+                  // Remove any non-digit characters as they're typed
+                  final digits = value.replaceAll(RegExp(r'[^\d+]'), '');
+                  if (digits != value) {
+                    numberController.text = digits;
+                    numberController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: digits.length),
+                    );
+                  }
+                },
               ),
               const SizedBox(height: 16),
               Row(
@@ -791,11 +879,18 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                     onPressed: () {
                       if (nameController.text.isNotEmpty && 
                           numberController.text.isNotEmpty) {
-                        _addEmergencyContact(
-                          nameController.text,
-                          numberController.text,
-                        );
                         Navigator.pop(context);
+                        _addSOSContact(
+                          nameController.text.trim(),
+                          numberController.text.trim(),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill all fields'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
                       }
                     },
                     child: const Text('Add'),
@@ -811,158 +906,208 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
 
   Future<void> _pickContact() async {
     try {
-      if (await FlutterContacts.requestPermission()) {
-        final contact = await FlutterContacts.openExternalPick();
-        if (contact != null) {
-          final fullContact = await FlutterContacts.getContact(contact.id);
-          if (fullContact?.phones.isNotEmpty == true) {
-            // If contact has multiple numbers, show number picker
-            String selectedNumber = fullContact!.phones.first.number;
-            if (fullContact.phones.length > 1) {
-              final numberResult = await showDialog<String>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Select number for ${fullContact.displayName}'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: fullContact.phones.map((phone) {
-                      final formattedNumber = HospitalContacts.formatPhoneNumber(phone.number);
-                      return ListTile(
-                        leading: const Icon(Icons.phone),
-                        title: Text(formattedNumber),
-                        subtitle: Text(phone.label.toString()),
-                        onTap: () => Navigator.pop(context, phone.number),
-                      );
-                    }).toList(),
-                  ),
+      // Check permission status first
+      final permission = await FlutterContacts.requestPermission();
+      if (!permission) {
+        if (!mounted) return;
+        
+        // Show permission explanation dialog
+        final shouldRequest = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Contacts Permission Required'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This app needs access to your contacts to allow you to select emergency contacts.',
+                  style: TextStyle(fontSize: 16),
                 ),
-              );
-              if (numberResult != null) {
-                selectedNumber = numberResult;
-              } else {
-                return; // User cancelled number selection
-              }
-            }
-
-            // Show relationship picker
-            final relationships = [
-              'Father',
-              'Mother',
-              'Spouse',
-              'Brother',
-              'Sister',
-              'Friend',
-              'Doctor',
-              'Other'
-            ];
-
-            String? selectedRelationship = await showDialog<String>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('Relationship with ${fullContact.displayName}'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: relationships.map((relationship) => ListTile(
-                      leading: Icon(
-                        SOSContact.getIconForRelationship(relationship),
-                        color: SOSContact.getColorForRelationship(relationship),
-                      ),
-                      title: Text(relationship),
-                      onTap: () => Navigator.pop(context, relationship),
-                    )).toList(),
-                  ),
+                SizedBox(height: 12),
+                Text(
+                  'You can grant this permission in your device settings.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
               ),
-            );
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Open Settings'),
+              ),
+            ],
+          ),
+        );
 
-            // If "Other" is selected, show custom relationship input
-            if (selectedRelationship == 'Other') {
-              final relationshipController = TextEditingController();
-              final customResult = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Specify Relationship'),
-                  content: TextField(
-                    controller: relationshipController,
-                    decoration: const InputDecoration(
-                      labelText: 'Relationship',
-                      hintText: 'E.g., Cousin, Neighbor',
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (relationshipController.text.isNotEmpty) {
-                          Navigator.pop(context, true);
-                        }
-                      },
-                      child: const Text('Add'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (customResult == true) {
-                selectedRelationship = relationshipController.text.trim();
-              } else {
-                return; // User cancelled custom relationship input
-              }
-            }
-
-            if (selectedRelationship != null && mounted) {
-              final success = await SOSContactsManager.addContact(
-                SOSContact(
-                  name: fullContact.displayName,
-                  number: selectedNumber,
-                  relationship: selectedRelationship,
-                ),
-              );
-
-              if (mounted) {
-                if (success) {
-                  await _loadSOSContacts();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Added ${fullContact.displayName} to emergency contacts'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Could not add contact. Maximum limit reached or contact already exists.'),
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                }
-              }
-            }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Selected contact has no phone numbers'),
-                  duration: Duration(seconds: 3),
-                ),
-              );
-            }
-          }
+        if (shouldRequest == true && mounted) {
+          // Open app settings
+          await FlutterContacts.openExternalPick();
         }
-      } else {
+        return;
+      }
+
+      // Proceed with contact picking
+      final contact = await FlutterContacts.openExternalPick();
+      if (contact == null) return;  // User cancelled selection
+
+      final fullContact = await FlutterContacts.getContact(contact.id);
+      if (fullContact == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Permission to access contacts was denied'),
+              content: Text('Could not load contact details'),
               duration: Duration(seconds: 3),
             ),
           );
         }
+        return;
+      }
+
+      if (fullContact.phones.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Selected contact has no phone numbers'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      // If contact has multiple numbers, show number picker
+      String selectedNumber = fullContact.phones.first.number;
+      if (fullContact.phones.length > 1) {
+        final numberResult = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Select number for ${fullContact.displayName}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: fullContact.phones.map((phone) => ListTile(
+                leading: const Icon(Icons.phone),
+                title: Text(phone.number),
+                subtitle: Text(phone.label.name),
+                onTap: () => Navigator.pop(context, phone.number),
+              )).toList(),
+            ),
+          ),
+        );
+        if (numberResult != null) {
+          selectedNumber = numberResult;
+        } else {
+          return; // User cancelled number selection
+        }
+      }
+
+      // Show relationship picker
+      final relationships = [
+        'Father',
+        'Mother',
+        'Spouse',
+        'Brother',
+        'Sister',
+        'Friend',
+        'Doctor',
+        'Other'
+      ];
+
+      if (!mounted) return;
+
+      final selectedRelationship = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Relationship with ${fullContact.displayName}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: relationships.map((relationship) => ListTile(
+                leading: Icon(
+                  SOSContact.getIconForRelationship(relationship),
+                  color: SOSContact.getColorForRelationship(relationship),
+                ),
+                title: Text(relationship),
+                onTap: () => Navigator.pop(context, relationship),
+              )).toList(),
+            ),
+          ),
+        ),
+      );
+
+      if (selectedRelationship == null) return;  // User cancelled relationship selection
+
+      String finalRelationship = selectedRelationship;
+      if (selectedRelationship == 'Other') {
+        if (!mounted) return;
+
+        // Show custom relationship input
+        final relationshipController = TextEditingController();
+        final customResult = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Specify Relationship'),
+            content: TextField(
+              controller: relationshipController,
+              decoration: const InputDecoration(
+                labelText: 'Relationship',
+                hintText: 'E.g., Cousin, Neighbor',
+              ),
+              textCapitalization: TextCapitalization.words,
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (relationshipController.text.isNotEmpty) {
+                    Navigator.pop(context, true);
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        );
+
+        if (customResult != true || !mounted) return;  // User cancelled or context disposed
+        finalRelationship = relationshipController.text.trim();
+      }
+
+      // Add the contact
+      final success = await SOSContactsManager.addContact(
+        SOSContact(
+          name: fullContact.displayName,
+          number: selectedNumber,
+          relationship: finalRelationship,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${fullContact.displayName} to emergency contacts'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not add contact. Maximum limit reached or contact already exists.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -976,21 +1121,8 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     }
   }
 
-  void _addEmergencyContact(String name, String number) {
-    // Here you can implement the logic to save the contact
-    // For now, we'll just show a success message
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Added $name to emergency contacts'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _showEmergencyNumbers() {
-    showModalBottomSheet(
+  Future<void> _showEmergencyNumbers() async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1001,51 +1133,50 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        builder: (context, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Emergency Numbers',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-              const Divider(),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    _buildEmergencySection(
-                      'Main Emergency Numbers',
-                      HospitalContacts.mainEmergencyContacts,
-                      Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildEmergencySection(
-                      'Additional Emergency Services',
-                      HospitalContacts.additionalEmergencyContacts,
-                      Colors.orange,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildEmergencySection(
-                      'Healthcare Departments',
-                      HospitalContacts.healthcareDepartments,
-                      Colors.blue,
-                    ),
-                  ],
-                ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _buildEmergencySection(
+                    'Main Emergency Numbers',
+                    HospitalContacts.mainEmergencyContacts,
+                    Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildEmergencySection(
+                    'Additional Emergency Services',
+                    HospitalContacts.additionalEmergencyContacts,
+                    Colors.orange,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildEmergencySection(
+                    'Healthcare Departments',
+                    HospitalContacts.healthcareDepartments,
+                    Colors.blue,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1059,48 +1190,49 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.bold,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
         const SizedBox(height: 8),
-        ...contacts.map((contact) => Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: color.withOpacity(0.1),
-              child: Icon(contact.icon, color: color),
-            ),
-            title: Text(contact.name),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(contact.number),
-                Text(
-                  contact.description,
-                  style: Theme.of(context).textTheme.bodySmall,
+        ...contacts.map((contact) => ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(contact.icon, color: color),
+          ),
+          title: Text(contact.name),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(contact.number),
+              Text(
+                contact.description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.call),
-              color: color,
-              onPressed: () => HospitalContacts.launchDialer(
-                contact.number,
-                context,
               ),
-            ),
+            ],
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.call),
+            color: Colors.green,
+            onPressed: () => _launchPhone(contact.number),
           ),
         )),
       ],
     );
   }
 
-  void _showSOSContacts() {
-    showModalBottomSheet(
+  Future<void> _showSOSContacts() async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1111,12 +1243,11 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        builder: (context, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
@@ -1130,88 +1261,124 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.person_add),
-                        onPressed: _showAddContactDialog,
-                        tooltip: 'Add Contact',
+                        tooltip: 'Add Manually',
+                        onPressed: _sosContacts.length < SOSContactsManager.maxContacts
+                            ? _showAddSOSContactDialog
+                            : null,
                       ),
                       IconButton(
                         icon: const Icon(Icons.contacts),
-                        onPressed: _pickContact,
                         tooltip: 'Pick from Contacts',
+                        onPressed: _sosContacts.length < SOSContactsManager.maxContacts
+                            ? _pickSOSContact
+                            : null,
                       ),
                     ],
                   ),
                 ],
               ),
-              const Divider(),
-              if (_sosContacts.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.contact_phone_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No emergency contacts added',
-                          style: TextStyle(
-                            fontSize: 16,
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: StreamBuilder<List<SOSContact>>(
+                stream: SOSContactsManager.getContactsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading contacts: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final contacts = snapshot.data!;
+                  
+                  if (contacts.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.contact_phone_outlined,
+                            size: 48,
                             color: Colors.grey,
                           ),
-                        ),
-                        Text(
-                          'Add your family and friends as emergency contacts',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No emergency contacts added yet',
+                            style: TextStyle(color: Colors.grey),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ReorderableListView.builder(
-                    itemCount: _sosContacts.length,
-                    onReorder: (oldIndex, newIndex) async {
-                      final success = await SOSContactsManager.reorderContacts(
-                        oldIndex,
-                        newIndex,
-                      );
-                      if (success) {
-                        await _loadSOSContacts();
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _showAddSOSContactDialog,
+                                icon: const Icon(Icons.person_add),
+                                label: const Text('Add Manually'),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton.icon(
+                                onPressed: _pickSOSContact,
+                                icon: const Icon(Icons.contacts),
+                                label: const Text('Pick from Contacts'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ReorderableListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: contacts.length,
+                    onReorder: (oldIndex, newIndex) {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
                       }
+                      final reorderedContacts = List<SOSContact>.from(contacts);
+                      final item = reorderedContacts.removeAt(oldIndex);
+                      reorderedContacts.insert(newIndex, item);
+                      SOSContactsManager.reorderContacts(reorderedContacts);
                     },
                     itemBuilder: (context, index) {
-                      final contact = _sosContacts[index];
-                      return Card(
-                        key: ValueKey(contact.number),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
+                      final contact = contacts[index];
+                      return Dismissible(
+                        key: Key(contact.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 16),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onDismissed: (_) => _removeSOSContact(contact),
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: contact.color.withOpacity(0.2),
                             child: Icon(contact.icon, color: contact.color),
                           ),
                           title: Text(contact.name),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(contact.relationship),
-                              Text(
-                                HospitalContacts.formatPhoneNumber(contact.number),
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-                          ),
+                          subtitle: Text(contact.number),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              Text(
+                                contact.relationship,
+                                style: TextStyle(
+                                  color: contact.color,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.call),
                                 color: Colors.green,
@@ -1220,28 +1387,100 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                                   context,
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                color: Colors.red,
-                                onPressed: () => _removeSOSContact(index),
-                              ),
                             ],
                           ),
                         ),
                       );
                     },
-                  ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddSOSContactDialog() async {
+    final nameController = TextEditingController();
+    final numberController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add Emergency Contact',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  hintText: 'Enter contact name',
                 ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Drag and drop to reorder contacts by priority',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: numberController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: 'Enter phone number',
                 ),
+                keyboardType: TextInputType.phone,
+                onChanged: (value) {
+                  // Remove any non-digit characters as they're typed
+                  final digits = value.replaceAll(RegExp(r'[^\d+]'), '');
+                  if (digits != value) {
+                    numberController.text = digits;
+                    numberController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: digits.length),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (nameController.text.isNotEmpty && 
+                          numberController.text.isNotEmpty) {
+                        Navigator.pop(context);
+                        _addSOSContact(
+                          nameController.text.trim(),
+                          numberController.text.trim(),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please fill all fields'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Next'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1250,91 +1489,219 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     );
   }
 
-  Future<void> _showAddContactDialog() async {
-    final nameController = TextEditingController();
-    final numberController = TextEditingController();
-    final relationshipController = TextEditingController();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Emergency Contact'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'Enter contact name',
-              ),
-              textCapitalization: TextCapitalization.words,
+  Future<void> _pickSOSContact() async {
+    try {
+      // Check permission status first
+      final permission = await FlutterContacts.requestPermission();
+      if (!permission) {
+        if (!mounted) return;
+        
+        // Show permission explanation dialog
+        final shouldRequest = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Contacts Permission Required'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This app needs access to your contacts to allow you to select emergency contacts.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'You can grant this permission in your device settings.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
             ),
-            TextField(
-              controller: numberController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter phone number',
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
               ),
-              keyboardType: TextInputType.phone,
-            ),
-            TextField(
-              controller: relationshipController,
-              decoration: const InputDecoration(
-                labelText: 'Relationship',
-                hintText: 'E.g., Father, Mother, Spouse',
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Open Settings'),
               ),
-              textCapitalization: TextCapitalization.words,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty && 
-                  numberController.text.isNotEmpty &&
-                  relationshipController.text.isNotEmpty) {
-                Navigator.pop(context, true);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
-                );
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
+        );
 
-    if (result == true) {
-      final success = await SOSContactsManager.addContact(
-        SOSContact(
-          name: nameController.text.trim(),
-          number: numberController.text.trim(),
-          relationship: relationshipController.text.trim(),
-        ),
-      );
+        if (shouldRequest == true && mounted) {
+          // Open app settings
+          await FlutterContacts.openExternalPick();
+        }
+        return;
+      }
 
-      if (mounted) {
-        if (success) {
-          await _loadSOSContacts();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Added ${nameController.text} to emergency contacts'),
-            ),
-          );
-        } else {
+      // Proceed with contact picking
+      final contact = await FlutterContacts.openExternalPick();
+      if (contact == null) return;  // User cancelled selection
+
+      final fullContact = await FlutterContacts.getContact(contact.id);
+      if (fullContact == null) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not add contact. Maximum limit reached or contact already exists.'),
+              content: Text('Could not load contact details'),
+              duration: Duration(seconds: 3),
             ),
           );
         }
+        return;
+      }
+
+      if (fullContact.phones.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Selected contact has no phone numbers'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      // If contact has multiple numbers, show number picker
+      String selectedNumber = fullContact.phones.first.number;
+      if (fullContact.phones.length > 1) {
+        final numberResult = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Select number for ${fullContact.displayName}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: fullContact.phones.map((phone) => ListTile(
+                leading: const Icon(Icons.phone),
+                title: Text(phone.number),
+                subtitle: Text(phone.label.name),
+                onTap: () => Navigator.pop(context, phone.number),
+              )).toList(),
+            ),
+          ),
+        );
+        if (numberResult != null) {
+          selectedNumber = numberResult;
+        } else {
+          return; // User cancelled number selection
+        }
+      }
+
+      // Show relationship picker
+      final relationships = [
+        'Father',
+        'Mother',
+        'Spouse',
+        'Brother',
+        'Sister',
+        'Friend',
+        'Doctor',
+        'Other'
+      ];
+
+      if (!mounted) return;
+
+      final selectedRelationship = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Relationship with ${fullContact.displayName}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: relationships.map((relationship) => ListTile(
+                leading: Icon(
+                  SOSContact.getIconForRelationship(relationship),
+                  color: SOSContact.getColorForRelationship(relationship),
+                ),
+                title: Text(relationship),
+                onTap: () => Navigator.pop(context, relationship),
+              )).toList(),
+            ),
+          ),
+        ),
+      );
+
+      if (selectedRelationship == null) return;  // User cancelled relationship selection
+
+      String finalRelationship = selectedRelationship;
+      if (selectedRelationship == 'Other') {
+        if (!mounted) return;
+
+        // Show custom relationship input
+        final relationshipController = TextEditingController();
+        final customResult = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Specify Relationship'),
+            content: TextField(
+              controller: relationshipController,
+              decoration: const InputDecoration(
+                labelText: 'Relationship',
+                hintText: 'E.g., Cousin, Neighbor',
+              ),
+              textCapitalization: TextCapitalization.words,
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (relationshipController.text.isNotEmpty) {
+                    Navigator.pop(context, true);
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        );
+
+        if (customResult != true || !mounted) return;  // User cancelled or context disposed
+        finalRelationship = relationshipController.text.trim();
+      }
+
+      // Add the contact
+      final success = await SOSContactsManager.addContact(
+        SOSContact(
+          name: fullContact.displayName,
+          number: selectedNumber,
+          relationship: finalRelationship,
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${fullContact.displayName} to emergency contacts'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not add contact. Maximum limit reached or contact already exists.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking contact: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
