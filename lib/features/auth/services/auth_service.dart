@@ -39,8 +39,18 @@ class AuthService extends ChangeNotifier {
       // Check if profile exists
       final hasProfile = await isUserProfileComplete();
       if (!hasProfile) {
-        // Return credential to allow profile setup
-        return userCredential;
+        // Create a basic profile if it doesn't exist
+        final user = userCredential.user!;
+        final profile = {
+          'uid': user.uid,
+          'email': user.email,
+          'fullName': user.displayName ?? '',
+          'photoUrl': user.photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        
+        await _firestore.collection('users').doc(user.uid).set(profile);
       }
 
       return userCredential;

@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Base function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to check if the user owns the file
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Match medical records files
+    match /medical_records/{userId}/{type}/{fileName} {
+      // Allow read if user is authenticated and owns the file
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Allow write if user is authenticated and owns the file
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Allow delete if user is authenticated and owns the file
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+  }
+} 

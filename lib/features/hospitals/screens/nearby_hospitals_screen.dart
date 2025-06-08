@@ -526,7 +526,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
             longitude: lon.toDouble(),
             distance: distance / 1000,
           );
-        }).toList();
+    }).toList();
 
         hospitals.sort((a, b) => a.distance.compareTo(b.distance));
 
@@ -645,7 +645,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      children: [
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -668,9 +668,9 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
 
     if (_isLoading) {
       return Center(
-        child: Column(
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+            children: [
             const CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
@@ -726,14 +726,14 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                 Icon(Icons.emergency, color: Colors.red[700]),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
+                child: Text(
                     'Quick Emergency Numbers',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.red[700],
-                      fontWeight: FontWeight.bold,
-                    ),
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+              ),
                 IconButton(
                   icon: const Icon(Icons.add_call),
                   onPressed: _showAddNumberDialog,
@@ -763,9 +763,9 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                               backgroundColor: Colors.red,
                               foregroundColor: Colors.white,
                             ),
-                          ),
-                        ),
                       ),
+                    ),
+                  ),
                     ).toList(),
                   );
                 } else {
@@ -793,10 +793,10 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                   );
                 }
               },
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
-      ),
     );
   }
 
@@ -824,7 +824,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(
+        Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
@@ -885,7 +885,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                           numberController.text.trim(),
                         );
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Please fill all fields'),
                             duration: Duration(seconds: 2),
@@ -918,8 +918,8 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
             title: const Text('Contacts Permission Required'),
             content: const Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                 Text(
                   'This app needs access to your contacts to allow you to select emergency contacts.',
                   style: TextStyle(fontSize: 16),
@@ -1134,7 +1134,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
         maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) => Column(
-          children: [
+                          children: [
             Container(
               padding: const EdgeInsets.all(16),
               child: const Row(
@@ -1151,7 +1151,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
               ),
             ),
             const Divider(height: 1),
-            Expanded(
+                            Expanded(
               child: ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1188,15 +1188,15 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
     Color color,
   ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             title,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
@@ -1212,15 +1212,15 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(contact.number),
-              Text(
+                                  Text(
                 contact.description,
                 style: const TextStyle(
                   fontSize: 12,
                   color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
           trailing: IconButton(
             icon: const Icon(Icons.call),
             color: Colors.green,
@@ -1244,7 +1244,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
         maxChildSize: 0.95,
         expand: false,
         builder: (context, scrollController) => Column(
-          children: [
+                              children: [
             Container(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -1255,10 +1255,10 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Row(
-                    children: [
+                                  ),
+                                ),
+                                Row(
+                                  children: [
                       IconButton(
                         icon: const Icon(Icons.person_add),
                         tooltip: 'Add Manually',
@@ -1327,10 +1327,10 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                                 onPressed: _pickSOSContact,
                                 icon: const Icon(Icons.contacts),
                                 label: const Text('Pick from Contacts'),
-                              ),
-                            ],
-                          ),
-                        ],
+                                ),
+                              ],
+                            ),
+                          ],
                       ),
                     );
                   }
@@ -1422,8 +1422,8 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
               Text(
                 'Add Emergency Contact',
                 style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
+                        ),
+                        const SizedBox(height: 16),
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
@@ -1454,7 +1454,7 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
-                children: [
+                          children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text('Cancel'),
@@ -1513,9 +1513,9 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                 Text(
                   'You can grant this permission in your device settings.',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
+                        ),
+                      ],
+                    ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -1754,9 +1754,9 @@ class _NearbyHospitalsScreenState extends State<NearbyHospitalsScreen> {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                     ),
-                  ),
-                ),
-              ],
+          ),
+        ),
+      ],
             ),
           ],
         ),

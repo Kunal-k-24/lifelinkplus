@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'core/router/app_router.dart';
 import 'features/auth/services/auth_service.dart';
 import 'firebase_options.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   try {
@@ -14,7 +15,14 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Set orientation after Firebase is initialized
+    // Initialize Supabase with correct credentials
+    await Supabase.initialize(
+      url: 'https://bhdxmbynailfidudqcgl.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJoZHhtYnluYWlsZmlkdWRxY2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzODkwODIsImV4cCI6MjA2NDk2NTA4Mn0.yuZWrQ_4AqJf2shKXCUYzAIDxQpddB3Kzu94u-lDs0w',
+      debug: true, // Enable debug mode for better error messages
+    );
+
+    // Set orientation after initialization
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
