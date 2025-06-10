@@ -20,25 +20,28 @@ class AuthService extends ChangeNotifier {
 
   Future<UserCredential> signInWithGoogle() async {
     try {
+      // Begin interactive sign in process
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         throw 'Sign in cancelled by user';
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // Obtain auth details from request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
+      // Create a new credential for Firebase
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
+      // Sign in to Firebase with the Google credential
       final userCredential = await _auth.signInWithCredential(credential);
       
       // Check if profile exists
       final hasProfile = await isUserProfileComplete();
-      if (!hasProfile) {
+      if (!hasProfile && userCredential.user != null) {
         // Create a basic profile if it doesn't exist
         final user = userCredential.user!;
         final profile = {

@@ -20,26 +20,35 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     try {
       final userCredential = await _authService.signInWithGoogle();
-      final user = userCredential.user!;
+      final user = userCredential.user;
 
-      if (mounted) {
+      if (user == null) {
+        throw 'Failed to sign in with Google';
+      }
+
+      if (!mounted) return;
+
+      // Check if user has a complete profile
         final hasProfile = await _authService.isUserProfileComplete();
+      
+      if (!mounted) return;
+
         if (!hasProfile) {
+        // Navigate to profile setup if profile is incomplete
           context.go('/profile-setup', extra: {
-            'email': user.email!,
+          'email': user.email ?? '',
             'displayName': user.displayName ?? '',
             'photoUrl': user.photoURL,
           });
         } else {
+        // Navigate to home if profile is complete
           context.go('/');
-        }
       }
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString())),
         );
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -56,29 +65,26 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final verticalPadding = ResponsiveLayout.verticalPadding(context);
 
     return Scaffold(
-      body: ResponsiveLayout.safeArea(
-        context: context,
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            child: ResponsiveLayout.withResponsivePadding(
-              context: context,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: contentWidth,
-                  minHeight: ResponsiveLayout.screenHeight(context) -
-                      ResponsiveLayout.screenPadding(context).vertical -
-                      verticalPadding * 2,
-                ),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: Container(
+              constraints: BoxConstraints(maxWidth: contentWidth),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // App Logo
+                  // App Logo and Title
                     Animate(
                       effects: [
                         FadeEffect(duration: 300.ms),
-                        ScaleEffect(
-                          begin: const Offset(0.8, 0.8),
-                          end: const Offset(1.0, 1.0),
+                      SlideEffect(
+                        begin: const Offset(0, -0.2),
+                        end: const Offset(0, 0),
                           duration: 300.ms,
                         ),
                       ],
@@ -88,49 +94,46 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // App Name
+                  const SizedBox(height: 16),
                     Animate(
                       effects: [
                         FadeEffect(duration: 300.ms, delay: 200.ms),
                         SlideEffect(
-                          begin: const Offset(0, 0.2),
+                        begin: const Offset(0, -0.2),
                           end: const Offset(0, 0),
                           duration: 300.ms,
                           delay: 200.ms,
                         ),
                       ],
                       child: Text(
-                        'LifeLink+',
-                        style: theme.textTheme.displaySmall?.copyWith(
+                      'LifeLink Plus',
+                      style: theme.textTheme.headlineLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
                         ),
+                      textAlign: TextAlign.center,
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Tagline
                     Animate(
                       effects: [
                         FadeEffect(duration: 300.ms, delay: 400.ms),
                         SlideEffect(
-                          begin: const Offset(0, 0.2),
+                        begin: const Offset(0, -0.2),
                           end: const Offset(0, 0),
                           duration: 300.ms,
                           delay: 400.ms,
                         ),
                       ],
                       child: Text(
-                        'Your Modern Healthcare Companion',
-                        style: theme.textTheme.bodyLarge?.copyWith(
+                      'Your Personal Health Assistant',
+                      style: theme.textTheme.titleLarge?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    SizedBox(height: isSmallScreen ? 48 : 64),
+                  const SizedBox(height: 48),
 
                     // Features List
                     Animate(
@@ -143,34 +146,29 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           delay: 600.ms,
                         ),
                       ],
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: isSmallScreen ? double.infinity : 600,
-                        ),
                         child: Column(
                           children: [
                             _FeatureItem(
-                              icon: Icons.medical_information_rounded,
-                              title: 'Digital Health Card',
-                              description: 'Keep your medical information handy',
+                          icon: Icons.local_hospital_rounded,
+                          title: 'Find Nearby Hospitals',
+                          description: 'Quickly locate medical facilities in your area',
                             ),
                             const SizedBox(height: 16),
                             _FeatureItem(
-                              icon: Icons.local_hospital_rounded,
-                              title: 'Find Hospitals',
-                              description: 'Locate nearby healthcare facilities',
+                          icon: Icons.medical_services_rounded,
+                          title: 'First Aid Guide',
+                          description: 'Step-by-step emergency medical assistance',
                             ),
                             const SizedBox(height: 16),
                             _FeatureItem(
-                              icon: Icons.health_and_safety_rounded,
-                              title: 'First Aid Guide',
-                              description: 'Quick access to emergency procedures',
+                          icon: Icons.badge_rounded,
+                          title: 'Digital Health Card',
+                          description: 'Keep your medical information accessible',
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    SizedBox(height: isSmallScreen ? 48 : 64),
+                  const SizedBox(height: 48),
 
                     // Sign In Button
                     Animate(
@@ -206,7 +204,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       ),
                     ),
                   ],
-                ),
               ),
             ),
           ),
@@ -233,23 +230,27 @@ class _FeatureItem extends StatelessWidget {
     final isSmallScreen = ResponsiveLayout.isMobile(context);
 
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.1),
+        ),
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               color: theme.colorScheme.primary,
-              size: isSmallScreen ? 24 : 28,
             ),
           ),
           const SizedBox(width: 16),
@@ -260,10 +261,10 @@ class _FeatureItem extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                if (!isSmallScreen) const SizedBox(height: 4),
                 Text(
                   description,
                   style: theme.textTheme.bodyMedium?.copyWith(

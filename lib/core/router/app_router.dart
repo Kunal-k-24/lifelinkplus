@@ -27,10 +27,13 @@ class AppRouter {
       GoRoute(
         path: '/profile-setup',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra as Map<String, dynamic>?;
+          if (args == null) {
+            return const WelcomeScreen();
+          }
           return ProfileSetupScreen(
-            email: args['email'] as String,
-            displayName: args['displayName'] as String,
+            email: args['email'] as String? ?? '',
+            displayName: args['displayName'] as String? ?? '',
             photoUrl: args['photoUrl'] as String?,
           );
         },
@@ -98,6 +101,12 @@ class AppRouter {
       return '/';
     }
 
+    // Allow access to profile setup if user is authenticated
+    if (isOnProfileSetup) {
+      return null;
+    }
+
+    // Check if user has completed profile setup
     return null;
   }
 } 

@@ -26,9 +26,12 @@ mixin _$Hospital {
   String get phoneNumber => throw _privateConstructorUsedError;
   double get latitude => throw _privateConstructorUsedError;
   double get longitude => throw _privateConstructorUsedError;
+  @JsonKey(defaultValue: null)
   String? get imageUrl => throw _privateConstructorUsedError;
+  @JsonKey(defaultValue: null)
   String? get description => throw _privateConstructorUsedError;
-  bool get isOpen24Hours => throw _privateConstructorUsedError;
+  @JsonKey(defaultValue: false)
+  bool? get isOpen24Hours => throw _privateConstructorUsedError;
 
   /// Serializes this Hospital to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -52,9 +55,9 @@ abstract class $HospitalCopyWith<$Res> {
       String phoneNumber,
       double latitude,
       double longitude,
-      String? imageUrl,
-      String? description,
-      bool isOpen24Hours});
+      @JsonKey(defaultValue: null) String? imageUrl,
+      @JsonKey(defaultValue: null) String? description,
+      @JsonKey(defaultValue: false) bool? isOpen24Hours});
 }
 
 /// @nodoc
@@ -80,7 +83,7 @@ class _$HospitalCopyWithImpl<$Res, $Val extends Hospital>
     Object? longitude = null,
     Object? imageUrl = freezed,
     Object? description = freezed,
-    Object? isOpen24Hours = null,
+    Object? isOpen24Hours = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -115,10 +118,10 @@ class _$HospitalCopyWithImpl<$Res, $Val extends Hospital>
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String?,
-      isOpen24Hours: null == isOpen24Hours
+      isOpen24Hours: freezed == isOpen24Hours
           ? _value.isOpen24Hours
           : isOpen24Hours // ignore: cast_nullable_to_non_nullable
-              as bool,
+              as bool?,
     ) as $Val);
   }
 }
@@ -138,9 +141,9 @@ abstract class _$$HospitalImplCopyWith<$Res>
       String phoneNumber,
       double latitude,
       double longitude,
-      String? imageUrl,
-      String? description,
-      bool isOpen24Hours});
+      @JsonKey(defaultValue: null) String? imageUrl,
+      @JsonKey(defaultValue: null) String? description,
+      @JsonKey(defaultValue: false) bool? isOpen24Hours});
 }
 
 /// @nodoc
@@ -164,7 +167,7 @@ class __$$HospitalImplCopyWithImpl<$Res>
     Object? longitude = null,
     Object? imageUrl = freezed,
     Object? description = freezed,
-    Object? isOpen24Hours = null,
+    Object? isOpen24Hours = freezed,
   }) {
     return _then(_$HospitalImpl(
       id: null == id
@@ -199,10 +202,10 @@ class __$$HospitalImplCopyWithImpl<$Res>
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String?,
-      isOpen24Hours: null == isOpen24Hours
+      isOpen24Hours: freezed == isOpen24Hours
           ? _value.isOpen24Hours
           : isOpen24Hours // ignore: cast_nullable_to_non_nullable
-              as bool,
+              as bool?,
     ));
   }
 }
@@ -217,9 +220,9 @@ class _$HospitalImpl implements _Hospital {
       required this.phoneNumber,
       required this.latitude,
       required this.longitude,
-      this.imageUrl,
-      this.description,
-      this.isOpen24Hours = false});
+      @JsonKey(defaultValue: null) this.imageUrl,
+      @JsonKey(defaultValue: null) this.description,
+      @JsonKey(defaultValue: false) this.isOpen24Hours});
 
   factory _$HospitalImpl.fromJson(Map<String, dynamic> json) =>
       _$$HospitalImplFromJson(json);
@@ -237,12 +240,14 @@ class _$HospitalImpl implements _Hospital {
   @override
   final double longitude;
   @override
+  @JsonKey(defaultValue: null)
   final String? imageUrl;
   @override
+  @JsonKey(defaultValue: null)
   final String? description;
   @override
-  @JsonKey()
-  final bool isOpen24Hours;
+  @JsonKey(defaultValue: false)
+  final bool? isOpen24Hours;
 
   @override
   String toString() {
@@ -294,15 +299,16 @@ class _$HospitalImpl implements _Hospital {
 
 abstract class _Hospital implements Hospital {
   const factory _Hospital(
-      {required final String id,
-      required final String name,
-      required final String address,
-      required final String phoneNumber,
-      required final double latitude,
-      required final double longitude,
-      final String? imageUrl,
-      final String? description,
-      final bool isOpen24Hours}) = _$HospitalImpl;
+          {required final String id,
+          required final String name,
+          required final String address,
+          required final String phoneNumber,
+          required final double latitude,
+          required final double longitude,
+          @JsonKey(defaultValue: null) final String? imageUrl,
+          @JsonKey(defaultValue: null) final String? description,
+          @JsonKey(defaultValue: false) final bool? isOpen24Hours}) =
+      _$HospitalImpl;
 
   factory _Hospital.fromJson(Map<String, dynamic> json) =
       _$HospitalImpl.fromJson;
@@ -320,11 +326,14 @@ abstract class _Hospital implements Hospital {
   @override
   double get longitude;
   @override
+  @JsonKey(defaultValue: null)
   String? get imageUrl;
   @override
+  @JsonKey(defaultValue: null)
   String? get description;
   @override
-  bool get isOpen24Hours;
+  @JsonKey(defaultValue: false)
+  bool? get isOpen24Hours;
 
   /// Create a copy of Hospital
   /// with the given fields replaced by the non-null parameter values.

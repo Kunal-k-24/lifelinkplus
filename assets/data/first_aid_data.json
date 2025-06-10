@@ -1,0 +1,252 @@
+{
+  "emergency_responses": [
+    {
+      "id": "heart_attack",
+      "responses": {
+        "en": {
+          "title": "⚠️ Heart Attack",
+          "content": "Heart attack symptoms and immediate actions:",
+          "steps": [
+            "Call emergency services (911/112/102) immediately",
+            "Make the person sit down and rest",
+            "Loosen any tight clothing",
+            "If available, give 300mg aspirin to chew",
+            "Keep monitoring breathing and consciousness"
+          ],
+          "isEmergency": true
+        },
+        "hi": {
+          "title": "⚠️ हृदय का दौरा",
+          "content": "हृदय का दौरा - लक्षण और तत्काल कार्रवाई:",
+          "steps": [
+            "तुरंत एम्बुलेंस को कॉल करें (911/112/102)",
+            "व्यक्ति को बैठने और आराम करने दें",
+            "कसे हुए कपड़े ढीले करें",
+            "यदि उपलब्ध हो, तो 300mg एस्पिरिन चबाने को दें",
+            "सांस और होश की निगरानी करते रहें"
+          ],
+          "isEmergency": true
+        },
+        "mr": {
+          "title": "⚠️ हृदयविकाराचा झटका",
+          "content": "हृदयविकाराचा झटका - लक्षणे आणि तात्काळ कृती:",
+          "steps": [
+            "त्वरित रुग्णवाहिकेला कॉल करा (911/112/102)",
+            "व्यक्तीला बसायला आणि विश्रांती घ्यायला सांगा",
+            "घट्ट कपडे सैल करा",
+            "उपलब्ध असल्यास, 300mg अॅस्पिरीन चघळायला द्या",
+            "श्वास आणि शुद्ध यांचे निरीक्षण करत रहा"
+          ],
+          "isEmergency": true
+        }
+      }
+    },
+    {
+      "id": "choking",
+      "responses": {
+        "en": {
+          "title": "⚠️ Choking",
+          "content": "Person is choking and cannot breathe:",
+          "steps": [
+            "Stand behind the person and lean them forward",
+            "Give 5 sharp blows between shoulder blades",
+            "Perform Heimlich maneuver if back blows fail",
+            "If person becomes unconscious, start CPR",
+            "Call emergency services if blockage persists"
+          ],
+          "isEmergency": true
+        },
+        "hi": {
+          "title": "⚠️ दम घुटना",
+          "content": "व्यक्ति का दम घुट रहा है और सांस नहीं ले पा रहा है:",
+          "steps": [
+            "व्यक्ति के पीछे खड़े हों और उन्हें आगे झुकाएं",
+            "कंधों के बीच 5 तेज़ थपकी मारें",
+            "अगर पीठ पर मारने से काम नहीं बने तो हाइमलिक मैन्युवर करें",
+            "यदि व्यक्ति बेहोश हो जाए, तो CPR शुरू करें",
+            "यदि रुकावट बनी रहे तो एम्बुलेंस बुलाएं"
+          ],
+          "isEmergency": true
+        },
+        "mr": {
+          "title": "⚠️ गुदमरणे",
+          "content": "व्यक्ती गुदमरत आहे आणि श्वास घेऊ शकत नाही:",
+          "steps": [
+            "व्यक्तीच्या मागे उभे राहा आणि त्यांना पुढे वाकवा",
+            "खांद्यांमध्ये 5 जोरदार फटके मारा",
+            "पाठीवरील फटके काम करत नसल्यास हाइमलिक मॅन्युव्हर करा",
+            "व्यक्ती बेशुद्ध झाल्यास CPR सुरू करा",
+            "अडथळा कायम राहिल्यास रुग्णवाहिका बोलवा"
+          ],
+          "isEmergency": true
+        }
+      }
+    },
+    {
+      "id": "severe_bleeding",
+      "responses": {
+        "en": {
+          "title": "⚠️ Severe Bleeding",
+          "content": "Control severe bleeding immediately:",
+          "steps": [
+            "Apply direct pressure with clean cloth/gauze",
+            "Keep the injured area elevated if possible",
+            "Add more layers if blood soaks through",
+            "Do not remove the first cloth layer",
+            "Call emergency services immediately"
+          ],
+          "isEmergency": true
+        },
+        "hi": {
+          "title": "⚠️ गंभीर रक्तस्राव",
+          "content": "गंभीर रक्तस्राव को तुरंत नियंत्रित करें:",
+          "steps": [
+            "साफ कपड़े/गॉज से सीधा दबाव डालें",
+            "यदि संभव हो तो घायल क्षेत्र को ऊपर उठाएं",
+            "यदि खून कपड़े में फैल जाए तो अधिक परतें लगाएं",
+            "पहली कपड़े की परत को न हटाएं",
+            "तुरंत एम्बुलेंस को कॉल करें"
+          ],
+          "isEmergency": true
+        },
+        "mr": {
+          "title": "⚠️ गंभीर रक्तस्त्राव",
+          "content": "गंभीर रक्तस्त्राव त्वरित नियंत्रित करा:",
+          "steps": [
+            "स्वच्छ कापड/गॉझ वापरून थेट दाब द्या",
+            "शक्य असल्यास जखमी भाग वर करा",
+            "रक्त कापडात मुरत असल्यास अधिक थर लावा",
+            "पहिला कापडाचा थर काढू नका",
+            "त्वरित रुग्णवाहिकेला कॉल करा"
+          ],
+          "isEmergency": true
+        }
+      }
+    },
+    {
+      "id": "burns",
+      "responses": {
+        "en": {
+          "title": "Burns Treatment",
+          "content": "First aid for burns:",
+          "steps": [
+            "Cool the burn under running water for 20 minutes",
+            "Remove any jewelry or tight items",
+            "Cover with clean, non-stick dressing",
+            "Do not pop any blisters",
+            "Seek medical help if burn is severe or large"
+          ],
+          "isEmergency": false
+        },
+        "hi": {
+          "title": "जलने का उपचार",
+          "content": "जलने पर प्राथमिक चिकित्सा:",
+          "steps": [
+            "जले हुए स्थान को 20 मिनट तक बहते पानी में रखें",
+            "गहने या कसे हुए सामान निकाल दें",
+            "साफ, नॉन-स्टिक ड्रेसिंग से ढकें",
+            "छालों को न फोड़ें",
+            "यदि जलन गंभीर या बड़ी है तो डॉक्टर से मिलें"
+          ],
+          "isEmergency": false
+        },
+        "mr": {
+          "title": "भाजण्यावरील उपचार",
+          "content": "भाजण्यावरील प्रथमोपचार:",
+          "steps": [
+            "भाजलेला भाग 20 मिनिटे वाहत्या पाण्याखाली धरा",
+            "दागिने किंवा घट्ट वस्तू काढा",
+            "स्वच्छ, नॉन-स्टिक ड्रेसिंगने झाका",
+            "फोड फोडू नका",
+            "भाजणे गंभीर किंवा मोठे असल्यास वैद्यकीय मदत घ्या"
+          ],
+          "isEmergency": false
+        }
+      }
+    },
+    {
+      "id": "fracture",
+      "responses": {
+        "en": {
+          "title": "Fracture/Broken Bone",
+          "content": "Suspected fracture first aid:",
+          "steps": [
+            "Do not move the injured area",
+            "Apply ice pack wrapped in cloth",
+            "Immobilize the area if possible",
+            "Check for circulation beyond injury",
+            "Seek immediate medical attention"
+          ],
+          "isEmergency": false
+        },
+        "hi": {
+          "title": "फ्रैक्चर/हड्डी टूटना",
+          "content": "संदिग्ध फ्रैक्चर की प्राथमिक चिकित्सा:",
+          "steps": [
+            "घायल क्षेत्र को न हिलाएं",
+            "कपड़े में लपेटी बर्फ की थैली लगाएं",
+            "यदि संभव हो तो क्षेत्र को स्थिर करें",
+            "चोट के आगे रक्त संचार की जांच करें",
+            "तुरंत चिकित्सा सहायता लें"
+          ],
+          "isEmergency": false
+        },
+        "mr": {
+          "title": "फ्रॅक्चर/हाड मोडणे",
+          "content": "संशयित फ्रॅक्चरवरील प्रथमोपचार:",
+          "steps": [
+            "जखमी भाग हलवू नका",
+            "कापडात गुंडाळलेली बर्फाची पिशवी लावा",
+            "शक्य असल्यास भाग स्थिर करा",
+            "जखमेच्या पुढील रक्ताभिसरण तपासा",
+            "त्वरित वैद्यकीय मदत घ्या"
+          ],
+          "isEmergency": false
+        }
+      }
+    }
+  ],
+  "common_responses": [
+    {
+      "id": "cpr_basic",
+      "responses": {
+        "en": {
+          "title": "⚠️ Basic CPR Steps",
+          "content": "Basic CPR for adults:",
+          "steps": [
+            "Check scene is safe and call for help",
+            "Check breathing and responsiveness",
+            "Start chest compressions (30 compressions)",
+            "Give 2 rescue breaths",
+            "Continue 30:2 ratio until help arrives"
+          ],
+          "isEmergency": true
+        },
+        "hi": {
+          "title": "⚠️ बेसिक CPR के चरण",
+          "content": "वयस्कों के लिए बेसिक CPR:",
+          "steps": [
+            "जगह सुरक्षित है या नहीं जांचें और मदद बुलाएं",
+            "सांस और प्रतिक्रिया की जांच करें",
+            "छाती दबाना शुरू करें (30 बार दबाएं)",
+            "2 रेस्क्यू सांस दें",
+            "मदद आने तक 30:2 के अनुपात में जारी रखें"
+          ],
+          "isEmergency": true
+        },
+        "mr": {
+          "title": "⚠️ मूलभूत CPR चे टप्पे",
+          "content": "प्रौढांसाठी मूलभूत CPR:",
+          "steps": [
+            "जागा सुरक्षित आहे का ते तपासा आणि मदत मागा",
+            "श्वास आणि प्रतिसाद तपासा",
+            "छातीवर दाब देणे सुरू करा (30 दाब)",
+            "2 कृत्रिम श्वास द्या",
+            "मदत येईपर्यंत 30:2 प्रमाणात सुरू ठेवा"
+          ],
+          "isEmergency": true
+        }
+      }
+    }
+  ]
+} 
